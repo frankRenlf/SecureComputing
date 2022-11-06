@@ -1,0 +1,67 @@
+// Build file for "Computing HMACs" exercise
+
+plugins {
+  id 'java'
+  id 'idea'
+}
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  implementation 'com.google.crypto.tink:tink:1.6.1'
+}
+
+idea {
+  module {
+    outputDir file('build/classes/main')
+    testOutputDir file('build/classes/test')
+  }
+}
+
+tasks.withType(JavaCompile) {
+  options.compilerArgs << "-Xlint:deprecation"
+}
+
+tasks.withType(JavaExec).configureEach {
+  group = 'application'
+  classpath = sourceSets.main.runtimeClasspath
+}
+
+task createkey(type: JavaExec) {
+  description = 'Creates an HMAC key.'
+  mainClass = 'CreateKey'
+  args 'build/key.json'
+  doLast {
+    println "\nKey written to ${args[0]}"
+  }
+}
+
+task computetag(type: JavaExec) {
+  description = 'Computes an authentication tag for a sample data file.'
+  mainClass = 'ComputeTag'
+  args 'build/key.json', 'data/message.txt', 'build/message.txt.tag'
+  doLast {
+    println "\nAuth tag written to ${args[2]}"
+  }
+}
+
+task verifytag(type: JavaExec) {
+  description = 'Verifies the authentication tag computed for a file.'
+  mainClass = 'VerifyTag'
+  args 'build/key.json', 'data/message.txt', 'build/message.txt.tag'
+  doFirst {
+    println ''
+  }
+}
+
+task run {
+  group = 'application'
+  description = 'Runs createkey, computetag & verifytag tasks.'
+  dependsOn createkey, computetag, verifytag
+  verifytag.mustRunAfter computetag
+  computetag.mustRunAfter createkey
+}
+
+defaultTasks 'run'
