@@ -78,7 +78,6 @@ public class AppServlet extends HttpServlet {
         String username = request.getParameter("username");
         String password = request.getParameter("password");
         String surname = request.getParameter("surname");
-
         try {
             if (authenticated(username, password)) {
                 // Get search results and merge with template
@@ -98,31 +97,26 @@ public class AppServlet extends HttpServlet {
     }
 
     private boolean authenticated(String username, String password) throws SQLException {
+
         Connection connection = null;
         PreparedStatement statement = null;
         ResultSet resultSet = null;
+        Boolean ret = null;
         try {
             connection = database;
             statement = connection.prepareStatement(AUTH_QUERY);
-            statement.setString(1, username);//设置参数
+            //set param
+            statement.setString(1, username);
             statement.setString(2, password);
             resultSet = statement.executeQuery();
-
-            return resultSet.next();
-
+            ret = resultSet.next();
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
             if (statement != null)
                 statement.close();
         }
-
-//        String query = String.format(AUTH_QUERY, username, password);
-//        if (query.contains("or")&&query.contains("==")) {
-//            return false;
-//        }
-        assert resultSet != null;
-        return resultSet.next();
+        return ret;
     }
 
     private List<Record> searchResults(String surname) throws SQLException {
