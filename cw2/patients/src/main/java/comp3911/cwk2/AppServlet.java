@@ -2,11 +2,7 @@ package comp3911.cwk2;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,14 +17,17 @@ import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import freemarker.template.TemplateExceptionHandler;
+import org.sqlite.SQLiteConnection;
+import org.sqlite.jdbc4.JDBC4Connection;
+import org.sqlite.jdbc4.JDBC4PreparedStatement;
 
 @SuppressWarnings("serial")
 public class AppServlet extends HttpServlet {
 
     private static final String CONNECTION_URL = "jdbc:sqlite:db.sqlite3";
-    private static final String AUTH_QUERY = "select * from user where username='%s' and password='%s'";
+    private static final String AUTH_QUERY = "select * from user where username=? and password=?";
     // ' or 1==1 or '
-    private static final String SEARCH_QUERY = "select * from patient where surname like '%s'";
+    private static final String SEARCH_QUERY = "select * from patient where surname like ?";
 
     private final Configuration fm = new Configuration(Configuration.VERSION_2_3_28);
     private Connection database;
@@ -99,18 +98,43 @@ public class AppServlet extends HttpServlet {
     }
 
     private boolean authenticated(String username, String password) throws SQLException {
-        String query = String.format(AUTH_QUERY, username, password);
-        try (Statement stmt = database.createStatement()) {
-            ResultSet results = stmt.executeQuery(query);
-            return results.next();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = database;
+            statement = connection.prepareStatement(AUTH_QUERY);
+            statement.setString(1, username);//设置参数
+            statement.setString(2, password);
+            resultSet = statement.executeQuery();
+
+            return resultSet.next();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            if (statement != null)
+                statement.close();
         }
+
+//        String query = String.format(AUTH_QUERY, username, password);
+//        if (query.contains("or")&&query.contains("==")) {
+//            return false;
+//        }
+        assert resultSet != null;
+        return resultSet.next();
     }
 
     private List<Record> searchResults(String surname) throws SQLException {
         List<Record> records = new ArrayList<>();
-        String query = String.format(SEARCH_QUERY, surname);
-        try (Statement stmt = database.createStatement()) {
-            ResultSet results = stmt.executeQuery(query);
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet results = null;
+        try {
+            connection = database;
+            statement = connection.prepareStatement(SEARCH_QUERY);
+            statement.setString(1, surname);//设置参数
+            results = statement.executeQuery();
             while (results.next()) {
                 Record rec = new Record();
                 rec.setSurname(results.getString(2));
@@ -121,6 +145,11 @@ public class AppServlet extends HttpServlet {
                 rec.setDiagnosis(results.getString(7));
                 records.add(rec);
             }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            if (statement != null)
+                statement.close();
         }
         return records;
     }
